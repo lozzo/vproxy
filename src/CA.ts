@@ -57,7 +57,7 @@ export class CAManger {
      */
     constructor(store?: ICAStore) {
         this.store = store || new FsCAStore()
-        let ca = this.store.get(this.rootCAName) || this.genNewRootCA()
+        const ca = this.store.get(this.rootCAName) || this.genNewRootCA()
         if (ca && ca.key) {
             this.rootCACert = forge.pki.certificateFromPem(ca.cert)
             this.rootCAKey = forge.pki.privateKeyFromPem(ca.key)
@@ -65,8 +65,8 @@ export class CAManger {
     }
 
     private genNewRootCA() {
-        let keys = pki.rsa.generateKeyPair(2049)
-        let cert = pki.createCertificate()
+        const keys = pki.rsa.generateKeyPair(2049)
+        const cert = pki.createCertificate()
         cert.publicKey = keys.publicKey
         cert.serialNumber = new Date().getTime() + ''
         cert.validity.notBefore = new Date()
@@ -127,8 +127,8 @@ export class CAManger {
 
     private genNewSubCA(domain: string) {
         if (!this.rootCACert || !this.rootCAKey) return
-        let keys = pki.rsa.generateKeyPair(2049)
-        let cert = pki.createCertificate()
+        const keys = pki.rsa.generateKeyPair(2049)
+        const cert = pki.createCertificate()
         cert.publicKey = keys.publicKey
 
         cert.serialNumber = new Date().getTime() + ''
@@ -136,7 +136,7 @@ export class CAManger {
         cert.validity.notBefore.setFullYear(cert.validity.notBefore.getFullYear() - 1)
         cert.validity.notAfter = new Date()
         cert.validity.notAfter.setFullYear(cert.validity.notAfter.getFullYear() + 1)
-        var attrs = [
+        const attrs = [
             {
                 name: 'commonName',
                 value: domain,
@@ -211,7 +211,7 @@ export class CAManger {
         ])
         cert.sign(this.rootCAKey!, forge.md.sha256.create())
 
-        let ca = {
+        const ca = {
             cert: pki.certificateToPem(cert),
             key: pki.privateKeyToPem(keys.privateKey),
         }
@@ -249,8 +249,8 @@ for linux: 请google
      * @param domain 子域名
      */
     public getCAByDomain(domain: string) {
-        const ca =  this.store.get(domain) || this.genNewSubCA(domain)
-        if (ca){
+        const ca = this.store.get(domain) || this.genNewSubCA(domain)
+        if (ca) {
             return ca
         }
         throw new Error('获取域名证书错误')

@@ -1,44 +1,11 @@
 import { FakeHttpsServer } from './FakeHttpsServer'
-import {Context} from  "./context"
-import { ICAStore } from './ca'
+import { Context } from './Context'
+import { ICAStore } from './CA'
 import http from 'http'
 import https from 'https'
 import net from 'net'
 import url from 'url'
 import { EventEmitter } from 'events'
-
-
-
-function compose (middleware:Function[]) {
-    if (!Array.isArray(middleware)) throw new TypeError('Middleware stack must be an array!')
-    for (const fn of middleware) {
-      if (typeof fn !== 'function') throw new TypeError('Middleware must be composed of functions!')
-    }
-  
-    /**
-     * @param {Object} context
-     * @return {Promise}
-     * @api public
-     */
-  
-    return function (context:Context, next:Function) {
-      // last called middleware #
-      let index = -1
-      return dispatch(0)
-      function dispatch (i:number):any {
-        if (i <= index) return Promise.reject(new Error('next() called multiple times'))
-        index = i
-        let fn = middleware[i]
-        if (i === middleware.length) fn = next
-        if (!fn) return Promise.resolve()
-        try {
-          return Promise.resolve(fn(context, dispatch.bind(null, i + 1)));
-        } catch (err) {
-          return Promise.reject(err)
-        }
-      }
-    }
-  }
 
 interface MitmProxyOptions {
     /**
@@ -56,16 +23,16 @@ interface MitmProxyOptions {
 }
 export interface MitmProxy extends EventEmitter {
     /**
-     * 使用中间件，使用上类似于koa的中间件，也是一个洋葱模型
+     * 使用中间件，使用上类似于koa的中间件，也是一个洋葱模型，只不过没那么溜
      * @param middleware 中间件函数
      */
     // use(middleware: (cxt:Context) => void): this
 }
 
-export class MitmProxy extends EventEmitter {
+export class VProxy extends EventEmitter {
     private httpTunnel: http.Server
     private fakeHttpsServer: FakeHttpsServer
-    private middleware :Array<Function>= []
+    public middleware: Array<Function> = []
     constructor(httpTunnel: http.Server, fakeHttpsServer: FakeHttpsServer) {
         super()
         this.httpTunnel = httpTunnel
@@ -96,8 +63,8 @@ export class MitmProxy extends EventEmitter {
                 })
             })
         })
-        this.httpTunnel.on('request', (req: http.IncomingMessage, resp: http.ServerResponse) => {
-            this._request(req, resp, 'http')
+        this.httpTunnel.on('request', async (req: http.IncomingMessage, resp: http.ServerResponse) => {
+            await this._request(req, resp, 'http')
         })
         this.fakeHttpsServer.on(
             'request',
@@ -110,28 +77,17 @@ export class MitmProxy extends EventEmitter {
     static async create(options: MitmProxyOptions) {
         const fakeHttpsServer = await FakeHttpsServer.create(options.fakeServerPort, options.caStore)
         const httpTunnel = new http.Server()
-        return new MitmProxy(httpTunnel, fakeHttpsServer)
+        return new VProxy(httpTunnel, fakeHttpsServer)
     }
 
-    private callback(){
-        const fn = compose(this.middleware)
-
-    }
-
-    private _request(req: http.IncomingMessage, resp: http.ServerResponse, protocol: 'http' | 'https') {
-        // let urlObject = url.parse(req.url!)
-        // let options = {
-        //     protocol: protocol + ':',
-        //     hostname: req.headers.host!.split(':')[0],
-        //     method: req.method,
-        //     port: req.headers.host!.split(':')[1] || 80,
-        //     path: urlObject.path,
-        //     headers: req.headers,
-        // }
-
-        // resp.writeHead(200, { 'Content-Type': 'text/html;charset=utf-8' })
-        // resp.write(`<html><body>我是伪造的: ${options.protocol}//${options.hostname} 站点</body></html>`)
-        // resp.end()
+    private async _request(req: http.IncomingMessage, resp: http.ServerResponse, protocol: 'http' | 'https') {
+        const ctx = new Context({
+            req,
+            resp,
+            protocol,
+            app: this,
+        })
+        await ctx.next()
     }
 
     async start() {
@@ -141,16 +97,24 @@ export class MitmProxy extends EventEmitter {
             })
         })
     }
-    public use(fn:Function){
+    public use(fn: (ctx: Context) => void) {
         this.middleware.push(fn)
-
+        return this
     }
 }
 
-; (async () => {
-    const a = await MitmProxy.create({
+;(async () => {
+    const a = await VProxy.create({
         fakeServerPort: 12345,
         httpTunnelPort: 8080,
+    })
+    a.use(async (ctx: Context) => {
+        ctx.resp.write('1\r\n')
+        await ctx.next()
+        ctx.resp.write('3\r\n')
+        ctx.resp.end()
+    }).use(async (ctx: Context) => {
+        ctx.resp.write('2\r\n')
     })
     await a.start()
 })()

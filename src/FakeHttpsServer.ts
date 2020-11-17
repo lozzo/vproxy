@@ -1,11 +1,14 @@
 import https from 'https'
 import tls from 'tls'
-import { CAManger, ICAStore } from './ca'
+import { CAManger, ICAStore } from './CA'
 import http from 'http'
 import { EventEmitter } from 'events'
 
 export interface FakeHttpsServer extends EventEmitter {
-    on(event: 'request', callback: (req: http.IncomingMessage, resp: http.ServerResponse,protocol:'https') => void): this
+    on(
+        event: 'request',
+        callback: (req: http.IncomingMessage, resp: http.ServerResponse, protocol: 'https') => void,
+    ): this
 }
 
 export class FakeHttpsServer extends EventEmitter {
@@ -18,7 +21,7 @@ export class FakeHttpsServer extends EventEmitter {
         this.server = server
         this.port = (server.address() as any).port
         this.server.on('request', (req: http.IncomingMessage, resp: http.ServerResponse) => {
-            this.emit('request', req, resp,'https') 
+            this.emit('request', req, resp, 'https')
         })
     }
 
