@@ -88,6 +88,7 @@ export class VProxy extends EventEmitter {
             app: this,
         })
         await ctx.next()
+        ctx.resp.end()
     }
 
     async start() {
@@ -111,10 +112,18 @@ export class VProxy extends EventEmitter {
     a.use(async (ctx: Context) => {
         ctx.resp.write('1\r\n')
         await ctx.next()
-        ctx.resp.write('3\r\n')
-        ctx.resp.end()
-    }).use(async (ctx: Context) => {
-        ctx.resp.write('2\r\n')
+        ctx.resp.write('6\r\n')
     })
+        .use(async (ctx: Context) => {
+            ctx.resp.write('2\r\n')
+            await ctx.next()
+            ctx.resp.write('5\r\n')
+        })
+        .use(async (ctx) => {
+            ctx.resp.write('3\r\n')
+        })
+        .use(async (ctx) => {
+            ctx.resp.write('4\r\n')
+        })
     await a.start()
 })()

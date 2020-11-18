@@ -27,8 +27,10 @@ export class Context {
         this.app = options.app
     }
     public async next() {
-        const fn = this.app.middleware[this.mIndex]
-        this.mIndex += 1
-        await fn(this)
+        while (this.mIndex < this.app.middleware.length) {
+            const fn = this.app.middleware[this.mIndex]
+            this.mIndex += 1
+            await fn(this)
+        }
     }
 }
