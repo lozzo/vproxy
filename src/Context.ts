@@ -13,7 +13,7 @@ export class Context {
     public resp: http.ServerResponse
     public protocol: 'http' | 'https'
     private app: VProxy
-    private mIndex = 0
+    private middlewareIndex = 0
     /**
      * 构造一个上下文，在一次代理的中间的一个上下文
      * @param req 请求对象
@@ -27,9 +27,9 @@ export class Context {
         this.app = options.app
     }
     public async next() {
-        while (this.mIndex < this.app.middleware.length) {
-            const fn = this.app.middleware[this.mIndex]
-            this.mIndex += 1
+        while (this.middlewareIndex < this.app.middleware.length) {
+            const fn = this.app.middleware[this.middlewareIndex]
+            this.middlewareIndex += 1
             await fn(this)
         }
     }

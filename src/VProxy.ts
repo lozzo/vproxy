@@ -11,7 +11,7 @@ interface MitmProxyOptions {
     /**
      * 假的https服务器的端口
      */
-    fakeServerPort: number
+    fakeServerPort?: number
     /**
      * http代理的端口
      */
@@ -21,7 +21,7 @@ interface MitmProxyOptions {
      */
     caStore?: ICAStore
 }
-export interface MitmProxy extends EventEmitter {
+export interface VProxy extends EventEmitter {
     /**
      * 使用中间件，使用上类似于koa的中间件，也是一个洋葱模型，只不过没那么溜
      * @param middleware 中间件函数
@@ -75,7 +75,7 @@ export class VProxy extends EventEmitter {
     }
 
     static async create(options: MitmProxyOptions) {
-        const fakeHttpsServer = await FakeHttpsServer.create(options.fakeServerPort, options.caStore)
+        const fakeHttpsServer = await FakeHttpsServer.create(options.fakeServerPort || 0, options.caStore)
         const httpTunnel = new http.Server()
         return new VProxy(httpTunnel, fakeHttpsServer)
     }
@@ -104,7 +104,7 @@ export class VProxy extends EventEmitter {
     }
 }
 
-;(async () => {
+; (async () => {
     const a = await VProxy.create({
         fakeServerPort: 12345,
         httpTunnelPort: 8080,
