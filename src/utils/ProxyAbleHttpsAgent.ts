@@ -1,12 +1,12 @@
 import https from 'https'
 import tls from 'tls'
 import net from 'net'
-import http from 'http'
 
 interface ProxyAbleHttpsAgentOPtions {
     host: string
     port: number
     headers: NodeJS.Dict<string | string[]>
+    servername: string
 }
 export class ProxyAbleHttpsAgent extends https.Agent {
     private static _keybuf = Buffer.from('\r\n\r\n')
