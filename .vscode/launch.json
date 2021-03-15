@@ -17,6 +17,20 @@
       ],
       "internalConsoleOptions": "openOnSessionStart",
       "protocol": "inspector"
+    },
+    {
+      "name": "vproxy",
+      "type": "node",
+      "request": "launch",
+      "args": [
+        "src/VProxy.ts" // 入口文件
+      ],
+      "runtimeArgs": [
+        "-r",
+        "ts-node/register"
+      ],
+      "internalConsoleOptions": "openOnSessionStart",
+      "protocol": "inspector"
     }
   ]
 }
