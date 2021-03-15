@@ -1,11 +1,13 @@
 import https from 'https'
 import tls from 'tls'
 import net from 'net'
+import url from 'url'
+import http from 'http'
 
 interface ProxyAbleHttpsAgentOPtions {
     host: string
     port: number
-    headers: NodeJS.Dict<string | string[]>
+    headers: http.IncomingHttpHeaders
     servername: string
 }
 export class ProxyAbleHttpsAgent extends https.Agent {
@@ -79,5 +81,19 @@ export class ProxyAbleHttpsAgent extends https.Agent {
             msg += name + ': ' + headers[name] + '\r\n'
         })
         socket.write(msg + '\r\n')
+    }
+    /**
+     * 给agent设置目标代理地址
+     * @param proxyUrl 代理的地址
+     */
+    public setProxy(proxyUrl: string | undefined) {
+        if (proxyUrl) {
+            const _proxy = url.parse(proxyUrl)
+            if (_proxy.hostname && _proxy.port) {
+                this._proxy = { host: _proxy.hostname, port: +_proxy.port }
+            }
+        } else {
+            this._proxy = undefined
+        }
     }
 }
