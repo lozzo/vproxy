@@ -2,10 +2,10 @@ import { FakeHttpsServer } from './FakeHttpsServer'
 import { Context } from './Context'
 import { ICAStore } from './CA'
 import http from 'http'
-import https from 'https'
 import net from 'net'
 import url from 'url'
 import { EventEmitter } from 'events'
+import { info } from 'console'
 
 interface MitmProxyOptions {
     /**
@@ -29,10 +29,12 @@ export interface VProxy extends EventEmitter {
     // use(middleware: (cxt:Context) => void): this
 }
 
+type MiddlewareFunc = (ctx: Context) => Promise<void>
+
 export class VProxy extends EventEmitter {
     private httpTunnel: http.Server
     private fakeHttpsServer: FakeHttpsServer
-    public middleware: Array<Function> = []
+    public middleware: Array<MiddlewareFunc> = []
     constructor(httpTunnel: http.Server, fakeHttpsServer: FakeHttpsServer) {
         super()
         this.httpTunnel = httpTunnel
@@ -41,9 +43,7 @@ export class VProxy extends EventEmitter {
             const srvUrl = url.parse(`https://${req.url}`)
             console.debug(`CONNECT ${srvUrl.hostname}:${srvUrl.port}`)
             const srvSocket = net.connect(fakeHttpsServer.port, '127.0.0.1', () => {
-                cltSocket.write(
-                    'HTTP/1.1 200 Connection Established\r\n' + 'Proxy-agent: SOVITE-MITM-proxy\r\n' + '\r\n',
-                )
+                cltSocket.write('HTTP/1.1 200 Connection Established\r\n' + 'Proxy-agent: VPROXY-MITM\r\n' + '\r\n')
                 srvSocket.write(head)
                 srvSocket.pipe(cltSocket)
                 cltSocket.pipe(srvSocket)
@@ -87,7 +87,10 @@ export class VProxy extends EventEmitter {
             protocol,
             app: this,
         })
+        ctx.resp.setHeader('Vproxy', 'true')
         await ctx.next()
+        // ctx.resp.statusCode = 400
+        // ctx.resp.writeHead(201)
         ctx.resp.end()
     }
 
@@ -98,32 +101,34 @@ export class VProxy extends EventEmitter {
             })
         })
     }
-    public use(fn: (ctx: Context) => void) {
+    public use(fn: (ctx: Context) => Promise<void>) {
         this.middleware.push(fn)
         return this
     }
 }
 
-; (async () => {
+;(async () => {
     const a = await VProxy.create({
         fakeServerPort: 12345,
         httpTunnelPort: 8080,
     })
-    a.use(async (ctx: Context) => {
+    a.use(async (ctx) => {
         ctx.resp.write('1\r\n')
-        await ctx.next()
-        ctx.resp.write('6\r\n')
     })
-        .use(async (ctx: Context) => {
+        .use(async (ctx) => {
             ctx.resp.write('2\r\n')
             await ctx.next()
-            ctx.resp.write('5\r\n')
+            ctx.resp.write('7\r\n')
         })
         .use(async (ctx) => {
             ctx.resp.write('3\r\n')
+            await ctx.next()
+            ctx.resp.write('6\r\n')
         })
         .use(async (ctx) => {
             ctx.resp.write('4\r\n')
+            await ctx.next()
+            ctx.resp.write('5\r\n')
         })
     await a.start()
 })()
