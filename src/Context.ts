@@ -1,3 +1,5 @@
+import { warn } from 'console'
+import { debug } from 'console'
 import http from 'http'
 import { VProxy } from './VProxy'
 
@@ -32,5 +34,12 @@ export class Context {
             this.middlewareIndex += 1
             await fn(this)
         }
+        this.abort()
+    }
+    get isAbort(): Boolean {
+        return this.middlewareIndex > this.app.middleware.length
+    }
+    abort() {
+        this.middlewareIndex = this.app.middleware.length + 1
     }
 }
