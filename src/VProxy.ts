@@ -6,6 +6,7 @@ import net from 'net'
 import url from 'url'
 import { EventEmitter } from 'events'
 import { info } from 'console'
+import { getPipeline } from './middleware/pipeline'
 
 interface MitmProxyOptions {
     /**
@@ -26,10 +27,10 @@ export interface VProxy extends EventEmitter {
      * 使用中间件，使用上类似于koa的中间件，也是一个洋葱模型，只不过没那么溜
      * @param middleware 中间件函数
      */
-    // use(middleware: (cxt:Context) => void): this
+    use(middleware: MiddlewareFunc): this
 }
 
-type MiddlewareFunc = (ctx: Context) => Promise<void>
+export type MiddlewareFunc = (ctx: Context) => Promise<void>
 
 export class VProxy extends EventEmitter {
     private httpTunnel: http.Server
@@ -87,11 +88,11 @@ export class VProxy extends EventEmitter {
             protocol,
             app: this,
         })
-        ctx.resp.setHeader('Vproxy', 'true')
+        ctx.resp.setHeader('VProxy', 'true')
         await ctx.next()
-        // ctx.resp.statusCode = 400
-        // ctx.resp.writeHead(201)
-        ctx.resp.end()
+        // ctx.resp.statusCode = 404
+        // ctx.resp.statusMessage = 'xxxxxx'
+        // ctx.resp.end()
     }
 
     async start() {
@@ -101,7 +102,7 @@ export class VProxy extends EventEmitter {
             })
         })
     }
-    public use(fn: (ctx: Context) => Promise<void>) {
+    public use(fn: MiddlewareFunc) {
         this.middleware.push(fn)
         return this
     }
@@ -112,23 +113,31 @@ export class VProxy extends EventEmitter {
         fakeServerPort: 12345,
         httpTunnelPort: 8080,
     })
-    a.use(async (ctx) => {
-        ctx.resp.write('1\r\n')
+    const pipeline = getPipeline({
+        timeOut: 2000,
+        maxHttpSockets: 4,
+        maxHttpsSockets: 4,
     })
-        .use(async (ctx) => {
-            ctx.resp.write('2\r\n')
-            await ctx.next()
-            ctx.resp.write('7\r\n')
-        })
-        .use(async (ctx) => {
-            ctx.resp.write('3\r\n')
-            await ctx.next()
-            ctx.resp.write('6\r\n')
-        })
-        .use(async (ctx) => {
-            ctx.resp.write('4\r\n')
-            await ctx.next()
-            ctx.resp.write('5\r\n')
-        })
+    a.use(pipeline)
+    // a.use(async (ctx) => {
+    //     ctx.resp.write('1\r\n')
+    //     ctx.abort()
+    //     ctx.resp.write('abort')
+    // })
+    //     .use(async (ctx) => {
+    //         ctx.resp.write('2\r\n')
+    //         await ctx.next()
+    //         ctx.resp.write('7\r\n')
+    //     })
+    //     .use(async (ctx) => {
+    //         ctx.resp.write('3\r\n')
+    //         await ctx.next()
+    //         ctx.resp.write('6\r\n')
+    //     })
+    //     .use(async (ctx) => {
+    //         ctx.resp.write('4\r\n')
+    //         await ctx.next()
+    //         ctx.resp.write('5\r\n')
+    //     })
     await a.start()
 })()

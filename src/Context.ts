@@ -27,6 +27,9 @@ export class Context {
         this.resp = options.resp
         this.protocol = options.protocol
         this.app = options.app
+        this.resp.on('finish', () => {
+            debug('finish')
+        })
     }
     public async next() {
         while (this.middlewareIndex < this.app.middleware.length) {
@@ -41,5 +44,9 @@ export class Context {
     }
     abort() {
         this.middlewareIndex = this.app.middleware.length + 1
+    }
+    abortWithStatus(code: number) {
+        this.resp.statusCode = code
+        this.abort()
     }
 }
