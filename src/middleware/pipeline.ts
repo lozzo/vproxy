@@ -8,10 +8,10 @@ import https from 'https'
 import { debug } from 'console'
 
 /**
- * pipeline 直接透传网络请求
+ * pipeline 直接透传网络请求,使用pipe进行透传
  */
 
-class HTTPTransferProxy {
+export class HTTPTransferProxy {
     opt: PipelineOptions
     httpAgent: http.Agent
     httpsAgent: ProxyAbleHttpsAgent
@@ -20,7 +20,7 @@ class HTTPTransferProxy {
         this.httpAgent = new http.Agent({ keepAlive: true, maxSockets: opt.maxHttpSockets })
         this.httpsAgent = new ProxyAbleHttpsAgent({ keepAlive: true, maxSockets: opt.maxHttpsSockets })
     }
-    async _prepareRequest(ctx: Context): Promise<RequestOptions | undefined> {
+    async getRequestOptions(ctx: Context): Promise<RequestOptions | undefined> {
         const host = ctx.req.headers.host
         //非法域名与ip格式过滤
         if (host && !host.includes('.')) {
@@ -38,6 +38,7 @@ class HTTPTransferProxy {
         if (parsedProxy && parsedProxy.auth) {
             const auth = Buffer.from(parsedProxy.auth).toString('base64')
             headers['Proxy-Authorization'] = 'Basic ' + auth
+            this.httpsAgent.setProxy(proxy)
         }
 
         const rPath = `${parsedRawUrl.path}${parsedRawUrl.hash || ''}`
@@ -64,9 +65,12 @@ class HTTPTransferProxy {
         }
         return objHeaders
     }
-
+    /**
+     * 实际的上下文，这儿将请求上下文的req动作pipe到httClient
+     * @param ctx 请求上下文
+     */
     async pipe(ctx: Context) {
-        const requestOptions = await this._prepareRequest(ctx)
+        const requestOptions = await this.getRequestOptions(ctx)
         if (!requestOptions) {
             return
         }
@@ -87,7 +91,11 @@ class HTTPTransferProxy {
         httpClient.setTimeout(this.opt.timeOut)
         ctx.req.pipe(httpClient)
     }
-
+    /**
+     * 进行实际的网络请求，并pipe到上下文的resp内
+     * @param res httpClient 获取的实际响应
+     * @param ctx 请求上下文
+     */
     networkAccess(res: http.IncomingMessage, ctx: Context) {
         debug(ctx.req.method, `${ctx.protocol}://${ctx.req.headers.host}${ctx.req.url}`)
         res.on('error', (err: Error) => {
@@ -101,7 +109,7 @@ class HTTPTransferProxy {
     }
 }
 
-interface PipelineOptions {
+export interface PipelineOptions {
     proxy?: () => Promise<string>
     maxHttpSockets: number
     maxHttpsSockets: number
@@ -112,5 +120,6 @@ export function getPipeline(opt: PipelineOptions): MiddlewareFunc {
     const httpTransfer = new HTTPTransferProxy(opt)
     return async (ctx: Context) => {
         await httpTransfer.pipe(ctx)
+        // ctx.abort()
     }
 }
