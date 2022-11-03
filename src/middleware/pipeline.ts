@@ -14,11 +14,11 @@ import { debug } from 'console'
 export class HTTPTransferProxy {
     opt: PipelineOptions
     httpAgent: http.Agent
-    httpsAgent: ProxyAbleHttpsAgent
+    httpsAgent: ProxyAbleHttpsAgent | https.Agent
     constructor(opt: PipelineOptions) {
         this.opt = opt
         this.httpAgent = new http.Agent({ keepAlive: true, maxSockets: opt.maxHttpSockets })
-        this.httpsAgent = new ProxyAbleHttpsAgent({ keepAlive: true, maxSockets: opt.maxHttpsSockets })
+        this.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: opt.maxHttpsSockets })
     }
     async getRequestOptions(ctx: Context): Promise<RequestOptions | undefined> {
         const host = ctx.req.headers.host
@@ -35,14 +35,14 @@ export class HTTPTransferProxy {
         const proxy = this.opt.proxy ? await this.opt.proxy() : undefined
         const parsedProxy = proxy ? url.parse(proxy) : undefined
         const headers = this.getRawHeaders(ctx.req.rawHeaders)
+        // this.httpsAgent.setProxy(proxy)
         if (parsedProxy && parsedProxy.auth) {
             const auth = Buffer.from(parsedProxy.auth).toString('base64')
             headers['Proxy-Authorization'] = 'Basic ' + auth
-            this.httpsAgent.setProxy(proxy)
         }
 
         const rPath = `${parsedRawUrl.path}${parsedRawUrl.hash || ''}`
-        const rawHost = parsedRawUrl.hostname
+        const rawHost = (parsedProxy || {}).hostname || parsedRawUrl.hostname
         return {
             host: rawHost,
             port: parsedProxy
@@ -81,12 +81,15 @@ export class HTTPTransferProxy {
             ctx.protocol === 'https' ? https.request(requestOptions, _request) : http.request(requestOptions, _request)
 
         httpClient.on('error', (err: Error) => {
-            debug(`Request Error:${err.message}, ${ctx.req.headers.host} ${ctx.req.url}`)
+            debug(
+                `**********Request Error:${err.message}, ${ctx.req.headers.host} ${ctx.req.url},${requestOptions}************`,
+            )
+            ctx.abortWithStatus(503)
             ctx.req.removeAllListeners()
             ctx.req.unpipe()
+            ctx.resp.end()
             httpClient.removeAllListeners()
             httpClient.end()
-            ctx.abortWithStatus(503)
         })
         httpClient.setTimeout(this.opt.timeOut)
         ctx.req.pipe(httpClient)
@@ -97,7 +100,7 @@ export class HTTPTransferProxy {
      * @param ctx 请求上下文
      */
     networkAccess(res: http.IncomingMessage, ctx: Context) {
-        debug(ctx.req.method, `${ctx.protocol}://${ctx.req.headers.host}${ctx.req.url}`)
+        // debug(ctx.req.method, `${ctx.protocol}://${ctx.req.headers.host}${ctx.req.url}`)
         res.on('error', (err: Error) => {
             debug('NetworkAccess error', err.message)
             res.removeAllListeners()

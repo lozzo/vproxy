@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/eccrypto": "^1.1.2",
     "@types/node": "^14.14.10",
     "@typescript-eslint/eslint-plugin": "^4.8.0",
     "@typescript-eslint/parser": "^2.31.0",
@@ -24,6 +25,8 @@
   },
   "dependencies": {
     "@types/node-forge": "^0.9.5",
+    "eccrypto": "^1.1.6",
+    "eciesjs": "^0.3.9",
     "node-forge": "^0.10.0"
   }
 }

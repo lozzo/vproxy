@@ -42,7 +42,7 @@ export class VProxy extends EventEmitter {
         this.fakeHttpsServer = fakeHttpsServer
         this.httpTunnel.on('connect', (req: http.IncomingMessage, cltSocket: net.Socket, head: Buffer) => {
             const srvUrl = url.parse(`https://${req.url}`)
-            console.debug(`CONNECT ${srvUrl.hostname}:${srvUrl.port}`)
+            // console.debug(`CONNECT ${srvUrl.hostname}:${srvUrl.port}`)
             const srvSocket = net.connect(fakeHttpsServer.port, '127.0.0.1', () => {
                 cltSocket.write('HTTP/1.1 200 Connection Established\r\n' + 'Proxy-agent: VPROXY-MITM\r\n' + '\r\n')
                 srvSocket.write(head)
@@ -97,7 +97,7 @@ export class VProxy extends EventEmitter {
 
     async start() {
         return new Promise<void>((resv) => {
-            this.httpTunnel.listen(8080, () => {
+            this.httpTunnel.listen(8081, () => {
                 resv()
             })
         })
@@ -108,36 +108,21 @@ export class VProxy extends EventEmitter {
     }
 }
 
-;(async () => {
+; (async () => {
     const a = await VProxy.create({
-        fakeServerPort: 12345,
-        httpTunnelPort: 8080,
+        httpTunnelPort: 8081,
     })
     const pipeline = getPipeline({
         timeOut: 2000,
         maxHttpSockets: 4,
         maxHttpsSockets: 4,
+        // proxy: async () => {
+        //     return 'http://user1:user1@127.0.0.1:1087'
+        // },
     })
-    a.use(pipeline)
-    // a.use(async (ctx) => {
-    //     ctx.resp.write('1\r\n')
-    //     ctx.abort()
-    //     ctx.resp.write('abort')
-    // })
-    //     .use(async (ctx) => {
-    //         ctx.resp.write('2\r\n')
-    //         await ctx.next()
-    //         ctx.resp.write('7\r\n')
-    //     })
-    //     .use(async (ctx) => {
-    //         ctx.resp.write('3\r\n')
-    //         await ctx.next()
-    //         ctx.resp.write('6\r\n')
-    //     })
-    //     .use(async (ctx) => {
-    //         ctx.resp.write('4\r\n')
-    //         await ctx.next()
-    //         ctx.resp.write('5\r\n')
-    //     })
+    a.use(async (ctx) => {
+        ctx.resp.write('2\r\n')
+        ctx.resp.end()
+    })
     await a.start()
 })()
