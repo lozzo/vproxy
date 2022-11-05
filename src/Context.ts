@@ -1,5 +1,3 @@
-import { warn } from 'console'
-import { debug } from 'console'
 import http from 'http'
 import { VProxy } from './VProxy'
 

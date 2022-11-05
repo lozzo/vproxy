@@ -5,16 +5,16 @@ import http from 'http'
 import net from 'net'
 import url from 'url'
 import { EventEmitter } from 'events'
-import { info } from 'console'
+import fs from 'fs'
 import { getPipeline } from './middleware/pipeline'
 
 interface MitmProxyOptions {
     /**
-     * 假的https服务器的端口
+     * 假的https服务器的端口,用于转发https请求和响应，如果不设置则会随机启动一个
      */
     fakeServerPort?: number
     /**
-     * http代理的端口
+     * http代理的端口,对外使用的
      */
     httpTunnelPort: number
     /**
@@ -42,7 +42,7 @@ export class VProxy extends EventEmitter {
         this.fakeHttpsServer = fakeHttpsServer
         this.httpTunnel.on('connect', (req: http.IncomingMessage, cltSocket: net.Socket, head: Buffer) => {
             const srvUrl = url.parse(`https://${req.url}`)
-            // console.debug(`CONNECT ${srvUrl.hostname}:${srvUrl.port}`)
+            console.debug(`CONNECT ${srvUrl.hostname}:${srvUrl.port}`)
             const srvSocket = net.connect(fakeHttpsServer.port, '127.0.0.1', () => {
                 cltSocket.write('HTTP/1.1 200 Connection Established\r\n' + 'Proxy-agent: VPROXY-MITM\r\n' + '\r\n')
                 srvSocket.write(head)
@@ -78,7 +78,10 @@ export class VProxy extends EventEmitter {
     static async create(options: MitmProxyOptions) {
         const fakeHttpsServer = await FakeHttpsServer.create(options.fakeServerPort || 0, options.caStore)
         const httpTunnel = new http.Server()
-        return new VProxy(httpTunnel, fakeHttpsServer)
+        const vproxyIns =  new VProxy(httpTunnel, fakeHttpsServer)
+        console.log(`fake https server port: ${fakeHttpsServer.port}`)
+        console.log(`http tunnel port: ${options.httpTunnelPort}`)
+        return vproxyIns
     }
 
     private async _request(req: http.IncomingMessage, resp: http.ServerResponse, protocol: 'http' | 'https') {
@@ -90,9 +93,6 @@ export class VProxy extends EventEmitter {
         })
         ctx.resp.setHeader('VProxy', 'true')
         await ctx.next()
-        // ctx.resp.statusCode = 404
-        // ctx.resp.statusMessage = 'xxxxxx'
-        // ctx.resp.end()
     }
 
     async start() {
@@ -115,14 +115,14 @@ export class VProxy extends EventEmitter {
     const pipeline = getPipeline({
         timeOut: 2000,
         maxHttpSockets: 4,
-        maxHttpsSockets: 4,
-        // proxy: async () => {
-        //     return 'http://user1:user1@127.0.0.1:1087'
-        // },
+        maxHttpsSockets: 4
     })
-    a.use(async (ctx) => {
-        ctx.resp.write('2\r\n')
-        ctx.resp.end()
-    })
+
+    const filter = async (ctx: Context) => {
+        console.log("xxxxxxx",ctx.req.url)
+        await ctx.next()
+        console.log("xxxxxxxxxxxxx",ctx.resp.statusCode)
+    }
+    a.use(filter).use(pipeline)
     await a.start()
 })()

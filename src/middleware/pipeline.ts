@@ -8,16 +8,18 @@ import https from 'https'
 import { debug } from 'console'
 
 /**
- * pipeline 直接透传网络请求,使用pipe进行透传
+ * 全局pipeline 直接透传网络请求,使用pipe进行透传
+ * 一般用于动态切换代理
  */
 
 export class HTTPTransferProxy {
     opt: PipelineOptions
     httpAgent: http.Agent
-    httpsAgent: ProxyAbleHttpsAgent | https.Agent
+    httpsAgent: ProxyAbleHttpsAgent|https.Agent
     constructor(opt: PipelineOptions) {
         this.opt = opt
         this.httpAgent = new http.Agent({ keepAlive: true, maxSockets: opt.maxHttpSockets })
+        // this.httpsAgent = new ProxyAbleHttpsAgent({ keepAlive: true, maxSockets: opt.maxHttpsSockets })
         this.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: opt.maxHttpsSockets })
     }
     async getRequestOptions(ctx: Context): Promise<RequestOptions | undefined> {
@@ -87,7 +89,11 @@ export class HTTPTransferProxy {
             ctx.abortWithStatus(503)
             ctx.req.removeAllListeners()
             ctx.req.unpipe()
+            if (ctx.resp.writable){
+                ctx.resp.write(err.message)
+            }
             ctx.resp.end()
+            
             httpClient.removeAllListeners()
             httpClient.end()
         })
@@ -100,7 +106,7 @@ export class HTTPTransferProxy {
      * @param ctx 请求上下文
      */
     networkAccess(res: http.IncomingMessage, ctx: Context) {
-        // debug(ctx.req.method, `${ctx.protocol}://${ctx.req.headers.host}${ctx.req.url}`)
+        debug(ctx.req.method, `${ctx.protocol}://${ctx.req.headers.host}${ctx.req.url}`)
         res.on('error', (err: Error) => {
             debug('NetworkAccess error', err.message)
             res.removeAllListeners()
@@ -123,6 +129,5 @@ export function getPipeline(opt: PipelineOptions): MiddlewareFunc {
     const httpTransfer = new HTTPTransferProxy(opt)
     return async (ctx: Context) => {
         await httpTransfer.pipe(ctx)
-        // ctx.abort()
     }
 }

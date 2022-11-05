@@ -65,7 +65,7 @@ export class CAManger {
     }
 
     private genNewRootCA() {
-        const keys = pki.rsa.generateKeyPair(2049)
+        const keys = pki.rsa.generateKeyPair(2048)
         const cert = pki.createCertificate()
         cert.publicKey = keys.publicKey
         cert.serialNumber = new Date().getTime() + ''
@@ -116,7 +116,7 @@ export class CAManger {
                 name: 'subjectKeyIdentifier',
             },
         ])
-        cert.sign(keys.privateKey, forge.md.sha256.create())
+        cert.sign(keys.privateKey, forge.md.sha512.create())
         const ca = {
             cert: pki.certificateToPem(cert),
             key: pki.privateKeyToPem(keys.privateKey),
@@ -127,7 +127,7 @@ export class CAManger {
 
     private genNewSubCA(domain: string) {
         if (!this.rootCACert || !this.rootCAKey) return
-        const keys = pki.rsa.generateKeyPair(2049)
+        const keys = pki.rsa.generateKeyPair(2048)
         const cert = pki.createCertificate()
         cert.publicKey = keys.publicKey
 
@@ -162,54 +162,55 @@ export class CAManger {
                 value: 'https://baidu.com',
             },
         ]
-
-        cert.setIssuer(this.rootCACert.subject.attributes)
+        
         cert.setSubject(attrs)
+        cert.setIssuer(this.rootCACert.subject.attributes)
+        
 
-        cert.setExtensions([
-            {
-                name: 'basicConstraints',
-                critical: true,
-                cA: false,
-            },
-            {
-                name: 'keyUsage',
-                critical: true,
-                digitalSignature: true,
-                contentCommitment: true,
-                keyEncipherment: true,
-                dataEncipherment: true,
-                keyAgreement: true,
-                keyCertSign: true,
-                cRLSign: true,
-                encipherOnly: true,
-                decipherOnly: true,
-            },
-            {
-                name: 'subjectAltName',
-                altNames: [
-                    {
-                        type: 2,
-                        value: domain,
-                    },
-                ],
-            },
-            {
-                name: 'subjectKeyIdentifier',
-            },
-            {
-                name: 'extKeyUsage',
-                serverAuth: true,
-                clientAuth: true,
-                codeSigning: true,
-                emailProtection: true,
-                timeStamping: true,
-            },
-            {
-                name: 'authorityKeyIdentifier',
-            },
-        ])
-        cert.sign(this.rootCAKey!, forge.md.sha256.create())
+        cert.setExtensions([{
+            name: 'basicConstraints',
+            critical: true,
+            cA: false
+          }, {
+            name: 'keyUsage',
+            keyCertSign: true,
+            digitalSignature: true,
+            nonRepudiation: true,
+            keyEncipherment: true,
+            dataEncipherment: true
+          }, {
+            name: 'extKeyUsage',
+            serverAuth: true,
+            clientAuth: true,
+            codeSigning: true,
+            emailProtection: true,
+            timeStamping: true
+          }, {
+            name: 'nsCertType',
+            client: true,
+            server: true,
+            email: true,
+            objsign: true,
+            sslCA: true,
+            emailCA: true,
+            objCA: true
+          }, {
+            name: 'subjectAltName',
+            // 这里填多个域名或者 ip
+            altNames: [{
+              type: 2, // DNS
+              value: domain
+            }, {
+              type: 7, // ipv4
+              ip: '127.0.0.1'
+            }, {
+              type: 7, // ipv6
+              ip: '[::1]'
+            }]
+          }, {
+            name: 'subjectKeyIdentifier'
+          }]);
+        cert.sign(this.rootCAKey!, forge.md.sha512.create())
 
         const ca = {
             cert: pki.certificateToPem(cert),
@@ -240,8 +241,8 @@ export class CAManger {
         this.saveRootCAToDisk()
         console.log(`
 for mac: sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ${this.rootCAsavePath}
-for windowns: 请google
-for linux: 请google
+for windowns: certmgr /c /add ${this.rootCAsavePath} /s root
+for ubuntu: sudo cp ${this.rootCAsavePath} /usr/local/share/ca-certificates && sudo update-ca-certificates
         `)
     }
     /**
