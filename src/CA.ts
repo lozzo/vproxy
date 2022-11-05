@@ -94,10 +94,6 @@ export class CAManger {
                 name: 'organizationName',
                 value: 'CCCP',
             },
-            {
-                shortName: 'OU',
-                value: 'https://baidu.com',
-            },
         ]
         cert.setSubject(attrs)
         cert.setIssuer(attrs)
@@ -106,15 +102,42 @@ export class CAManger {
                 name: 'basicConstraints',
                 critical: true,
                 cA: true,
+                pathlen: 0
             },
             {
                 name: 'keyUsage',
                 critical: true,
-                keyCertSign: true,
+                keyCertSign: true
             },
             {
-                name: 'subjectKeyIdentifier',
+                name: 'extKeyUsage',
+                serverAuth: true
+                // clientAuth: true,
+                // codeSigning: true,
+                // emailProtection: true,
+                // timeStamping: true
             },
+            {
+                name: 'subjectKeyIdentifier'
+            },
+            // {
+            //     name: 'subjectAltName',
+            //     // 这里填多个域名或者 ip
+            //     altNames: [
+            //         // {
+            //         //     type: 2, // DNS
+            //         //     value: "localhost",
+            //         // },
+            //         // {
+            //         //     type: 7, // ipv4
+            //         //     ip: '127.0.0.1'
+            //         // },
+            //         // {
+            //         //     type: 7, // ipv6
+            //         //     ip: '[::1]'
+            //         // }
+            //     ]
+            // },
         ])
         cert.sign(keys.privateKey, forge.md.sha512.create())
         const ca = {
@@ -162,54 +185,55 @@ export class CAManger {
                 value: 'https://baidu.com',
             },
         ]
-        
+
         cert.setSubject(attrs)
         cert.setIssuer(this.rootCACert.subject.attributes)
-        
 
-        cert.setExtensions([{
-            name: 'basicConstraints',
-            critical: true,
-            cA: false
-          }, {
-            name: 'keyUsage',
-            keyCertSign: true,
-            digitalSignature: true,
-            nonRepudiation: true,
-            keyEncipherment: true,
-            dataEncipherment: true
-          }, {
-            name: 'extKeyUsage',
-            serverAuth: true,
-            clientAuth: true,
-            codeSigning: true,
-            emailProtection: true,
-            timeStamping: true
-          }, {
-            name: 'nsCertType',
-            client: true,
-            server: true,
-            email: true,
-            objsign: true,
-            sslCA: true,
-            emailCA: true,
-            objCA: true
-          }, {
-            name: 'subjectAltName',
-            // 这里填多个域名或者 ip
-            altNames: [{
-              type: 2, // DNS
-              value: domain
+
+        cert.setExtensions([
+            {
+                name: 'basicConstraints',
+                critical: true,
+                cA: false
+            },
+            {
+                name: 'keyUsage',
+                // keyCertSign: true,
+                digitalSignature: true,
+                // nonRepudiation: true,
+                keyEncipherment: true,
+                dataEncipherment: true
             }, {
-              type: 7, // ipv4
-              ip: '127.0.0.1'
-            }, {
-              type: 7, // ipv6
-              ip: '[::1]'
-            }]
-          }, {
-            name: 'subjectKeyIdentifier'
-          }]);
+                name: 'extKeyUsage',
+                serverAuth: true,
+                // clientAuth: true,
+                // codeSigning: true,
+                // emailProtection: true,
+                // timeStamping: true
+            },
+            {
+                name: 'nsCertType',
+                client: true,
+                server: true,
+                email: true,
+                objsign: true,
+                sslCA: true,
+                emailCA: true,
+                objCA: true
+            },
+            {
+                name: 'subjectAltName',
+                // 这里填多个域名或者 ip
+                altNames: [
+                    {
+                        type: 2, // DNS
+                        value: domain
+                    }
+                ]
+            },
+            {
+                name: 'subjectKeyIdentifier'
+            }]);
         cert.sign(this.rootCAKey!, forge.md.sha512.create())
 
         const ca = {
@@ -223,7 +247,7 @@ export class CAManger {
      * 将根证书放到tmp目录下,然后安装证书
      */
     private get rootCAsavePath(): string {
-        return path.join(os.tmpdir(), `${this.rootCAName}.crt`)
+        return path.join("/home/lozzow/workdir/vproxy", `${this.rootCAName}.crt`)
     }
     /**
      * 存储跟证书到磁盘，用于证书安装
