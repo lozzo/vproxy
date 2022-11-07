@@ -112,32 +112,11 @@ export class CAManger {
             {
                 name: 'extKeyUsage',
                 serverAuth: true
-                // clientAuth: true,
-                // codeSigning: true,
-                // emailProtection: true,
-                // timeStamping: true
             },
             {
                 name: 'subjectKeyIdentifier'
-            },
-            // {
-            //     name: 'subjectAltName',
-            //     // 这里填多个域名或者 ip
-            //     altNames: [
-            //         // {
-            //         //     type: 2, // DNS
-            //         //     value: "localhost",
-            //         // },
-            //         // {
-            //         //     type: 7, // ipv4
-            //         //     ip: '127.0.0.1'
-            //         // },
-            //         // {
-            //         //     type: 7, // ipv6
-            //         //     ip: '[::1]'
-            //         // }
-            //     ]
-            // },
+            }
+
         ])
         cert.sign(keys.privateKey, forge.md.sha512.create())
         const ca = {

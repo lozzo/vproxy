@@ -15,7 +15,7 @@ import { debug } from 'console'
 export class HTTPTransferProxy {
     opt: PipelineOptions
     httpAgent: http.Agent
-    httpsAgent: ProxyAbleHttpsAgent|https.Agent
+    httpsAgent: ProxyAbleHttpsAgent | https.Agent
     constructor(opt: PipelineOptions) {
         this.opt = opt
         this.httpAgent = new http.Agent({ keepAlive: true, maxSockets: opt.maxHttpSockets })
@@ -50,10 +50,10 @@ export class HTTPTransferProxy {
             port: parsedProxy
                 ? parsedProxy.port!
                 : parsedRawUrl
-                ? parsedRawUrl.port
-                : ctx.protocol === 'https'
-                ? 443
-                : 80,
+                    ? parsedRawUrl.port
+                    : ctx.protocol === 'https'
+                        ? 443
+                        : 80,
             path: rPath,
             method: ctx.req.method,
             headers,
@@ -86,14 +86,14 @@ export class HTTPTransferProxy {
             debug(
                 `**********Request Error:${err.message}, ${ctx.req.headers.host} ${ctx.req.url},${requestOptions}************`,
             )
-            ctx.abortWithStatus(503)
+            ctx.abortWithStatus(404)
             ctx.req.removeAllListeners()
             ctx.req.unpipe()
-            if (ctx.resp.writable){
+            if (ctx.resp.writable) {
                 ctx.resp.write(err.message)
             }
             ctx.resp.end()
-            
+
             httpClient.removeAllListeners()
             httpClient.end()
         })
